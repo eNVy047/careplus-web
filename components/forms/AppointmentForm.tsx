@@ -53,68 +53,70 @@ export const AppointmentForm = ({
     },
   });
 
-  const onSubmit = async (
-    values: z.infer<typeof AppointmentFormValidation>
-  ) => {
-    setIsLoading(true);
+  const onSubmit = async (values: z.infer<typeof AppointmentFormValidation>) => {
+  setIsLoading(true);
 
-    let status;
+  // Determine the status based on the type
+  const status: Status = (() => {
     switch (type) {
       case "schedule":
-        status = "scheduled";
-        break;
+        return "scheduled";
       case "cancel":
-        status = "cancelled";
-        break;
+        return "cancelled";
       default:
-        status = "pending";
+        return "pending";
     }
+  })();
 
-    try {
-      if (type === "create" && patientId) {
-        const appointment = {
-          userId,
-          patient: patientId,
+  try {
+    if (type === "create" && patientId) {
+      const appointment = {
+        userId,
+        patient: patientId,
+        primaryPhysician: values.primaryPhysician,
+        schedule: new Date(values.schedule),
+        reason: values.reason!,
+        status,
+        note: values.note,
+      };
+
+      const newAppointment = await createAppointment(appointment);
+
+      if (newAppointment) {
+        form.reset();
+        router.push(
+          `/patients/${userId}/new-appointment/success?appointmentId=${newAppointment.$id}`
+        );
+      }
+    } else if (appointment?.$id) { // Add null safety check for appointment
+      const appointmentToUpdate = {
+        userId,
+        appointmentId: appointment.$id, // Safe null assumption removed
+        appointment: {
           primaryPhysician: values.primaryPhysician,
           schedule: new Date(values.schedule),
-          reason: values.reason!,
-          status: status as Status,
-          note: values.note,
-        };
+          status,
+          cancellationReason: values.cancellationReason,
+        },
+        type,
+      };
 
-        const newAppointment = await createAppointment(appointment);
+      const updatedAppointment = await updateAppointment(appointmentToUpdate);
 
-        if (newAppointment) {
-          form.reset();
-          router.push(
-            `/patients/${userId}/new-appointment/success?appointmentId=${newAppointment.$id}`
-          );
-        }
-      } else {
-        const appointmentToUpdate = {
-          userId,
-          appointmentId: appointment?.$id!,
-          appointment: {
-            primaryPhysician: values.primaryPhysician,
-            schedule: new Date(values.schedule),
-            status: status as Status,
-            cancellationReason: values.cancellationReason,
-          },
-          type,
-        };
-
-        const updatedAppointment = await updateAppointment(appointmentToUpdate);
-
-        if (updatedAppointment) {
-          setOpen && setOpen(false);
-          form.reset();
-        }
+      if (updatedAppointment) {
+        if (setOpen) setOpen(false); // Simplified condition
+        form.reset();
       }
-    } catch (error) {
-      console.log(error);
+    } else {
+      console.error("Appointment ID is missing or invalid for update.");
     }
-    setIsLoading(false);
-  };
+  } catch (error) {
+    console.error("Failed to process appointment:", error);
+  } finally {
+    setIsLoading(false); // Always reset loading state after try-catch
+  }
+};
+
 
   let buttonLabel;
   switch (type) {
