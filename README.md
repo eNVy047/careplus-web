@@ -30,7 +30,7 @@ npm run dev command for running
 
 To run this project, you’ll need to add the following environment variables to your `.env.local` file:
 
-- `NEXT_PUBLIC_ENDPOINT`: Your endpoint URL
+- `NEXT_PUBLIC_ENDPOINT`: https://cloud.appwrite.io/v1
 - `PROJECT_ID`: Your project ID
 - `API_KEY`: Your API key
 - `DATABASE_ID`: Your database ID
